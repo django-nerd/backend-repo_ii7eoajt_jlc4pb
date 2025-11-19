@@ -1,48 +1,49 @@
 """
-Database Schemas
+Database Schemas for TaleQuill
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
+Each Pydantic model represents a collection in MongoDB.
+Collection name is the lowercase of the class name.
 
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+- Story -> "story"
+- Entry -> "entry"
+- MemoryEntity -> "memoryentity"
+
+These schemas are used for validation only; MongoDB remains schemaless.
 """
-
+from typing import Optional, Literal, List
 from pydantic import BaseModel, Field
-from typing import Optional
 
-# Example schemas (replace with your own):
-
-class User(BaseModel):
+class Story(BaseModel):
     """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
+    A user-owned story object
     """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+    title: str = Field(..., description="Story title")
+    synopsis: Optional[str] = Field(None, description="Optional one-paragraph premise")
+    cover_color: Optional[str] = Field(None, description="Accent color hex (for UI theming)")
+    author: Optional[str] = Field(None, description="Display author name")
 
-class Product(BaseModel):
+class Entry(BaseModel):
     """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
+    A single turn in the story timeline (either user action or AI continuation)
     """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+    story_id: str = Field(..., description="ID of the story this entry belongs to")
+    role: Literal["user", "ai"] = Field(..., description="Who wrote this entry")
+    content: str = Field(..., description="Plain text content of the entry")
 
-# Add your own schemas here:
-# --------------------------------------------------
+class MemoryEntity(BaseModel):
+    """
+    Tracked memory entity used for retrieval (characters, locations, facts)
+    """
+    story_id: str = Field(..., description="Story this memory belongs to")
+    kind: Literal["character", "location", "fact"] = Field(..., description="Type of memory")
+    name: str = Field(..., description="Canonical name of the memory entity")
+    description: Optional[str] = Field(None, description="Short description or attributes")
+    salience: Optional[int] = Field(3, ge=1, le=5, description="Importance weighting for retrieval")
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+# Convenience composite used in responses (not a collection)
+class StoryWithEntries(BaseModel):
+    id: str
+    title: str
+    synopsis: Optional[str]
+    entries: List[dict]
+    memory: List[dict]
